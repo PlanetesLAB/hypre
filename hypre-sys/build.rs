@@ -55,6 +55,17 @@ fn libomp_prefix() -> PathBuf {
     prefix
 }
 
+/// GCC's private include folder (holds omp.h), which libclang does not search.
+fn gcc_include_dir() -> PathBuf {
+    println!("cargo:rerun-if-env-changed=CC");
+    let cc = env::var("CC").unwrap_or_else(|_| "cc".to_owned());
+    let out = Command::new(&cc)
+        .arg("-print-file-name=include")
+        .output()
+        .expect("failed to ask the C compiler for its include folder");
+    PathBuf::from(String::from_utf8(out.stdout).unwrap().trim())
+}
+
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let src = manifest_dir.join("vendor/hypre/src");
@@ -64,16 +75,18 @@ fn main() {
     let libomp = (openmp && target_os == "macos").then(libomp_prefix);
 
     // 1. Build and install the vendored hypre (static, -O3 -march=native).
+    //    The release flags come after CMAKE_C_FLAGS, so -march=native is not
+    //    overridden by the target flags the cmake crate puts there.
     let mut config = cmake::Config::new(&src);
     config
         .profile("Release")
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("CMAKE_INSTALL_LIBDIR", "lib")
+        .define("CMAKE_C_FLAGS_RELEASE", "-O3 -DNDEBUG -march=native")
         .define("HYPRE_ENABLE_MPI", if mpi.is_some() { "ON" } else { "OFF" })
         .define("HYPRE_ENABLE_OPENMP", if openmp { "ON" } else { "OFF" })
         .define("HYPRE_BUILD_EXAMPLES", "OFF")
-        .define("HYPRE_BUILD_TESTS", "OFF")
-        .cflag("-march=native");
+        .define("HYPRE_BUILD_TESTS", "OFF");
     if let Some(mpicc) = mpi.as_ref().and_then(|m| m.mpicc.as_ref()) {
         // Same MPI as mpi-sys.
         config.define("MPI_C_COMPILER", mpicc);
@@ -117,8 +130,18 @@ fn main() {
         .allowlist_item("HYPRE_.*|MPI_Comm")
         .parse_callbacks(Box::new(SignedHypreConstants))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
-    if let Some(prefix) = &libomp {
-        builder = builder.clang_arg(format!("-I{}", prefix.join("include").display()));
+    if openmp {
+        match &libomp {
+            Some(prefix) => {
+                builder = builder.clang_arg(format!("-I{}", prefix.join("include").display()));
+            }
+            // Searched after clang's own headers, so only omp.h is taken from GCC.
+            None => {
+                builder = builder
+                    .clang_arg("-idirafter")
+                    .clang_arg(gcc_include_dir().display().to_string());
+            }
+        }
     }
     if let Some(mpi) = &mpi {
         for path in &mpi.include_paths {
