@@ -1,0 +1,24 @@
+[package]
+name = "hypre-sys"
+version = "0.1.0"
+authors = ["S. Maitrey <km.maitrey@gmail.com>"]
+edition = "2024"
+links = "hypre"
+description = "Bindings to hypre, the LLNL library of scalable linear solvers and multigrid methods"
+categories = ["external-ffi-bindings", "science"]
+repository = "https://github.com/PlanetesLAB/hypre"
+license = "MIT OR Apache-2.0"
+keywords = ["multigrid", "amg", "sparse", "ffi", "numerics"]
+exclude = [
+    "vendor/hypre/AUTOTEST",
+    "vendor/hypre/src/docs",
+    "vendor/hypre/src/examples",
+    "vendor/hypre/src/test",
+]
+
+[build-dependencies]
+bindgen = "0.73.2"
+cmake = "0.1.58"
+
+[lib]
+doctest = false

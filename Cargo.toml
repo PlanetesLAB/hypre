@@ -1,0 +1,3 @@
+[workspace]
+members = ["hypre-sys"]
+resolver = "2"
