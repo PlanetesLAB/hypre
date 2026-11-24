@@ -21,6 +21,7 @@ doctest = false
 
 [features]
 mpi = ["dep:mpi-sys", "dep:build-probe-mpi"]
+openmp = []
 
 [dependencies]
 mpi-sys = { version = "0.2.4", optional = true }
