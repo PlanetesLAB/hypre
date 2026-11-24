@@ -13,13 +13,31 @@ mod tests {
     use std::ffi::c_void;
     use std::ptr;
 
+    /// Communicator for the test: MPI_COMM_WORLD with MPI, 0 in the sequential build.
+    unsafe fn world() -> MPI_Comm {
+        #[cfg(feature = "mpi")]
+        unsafe {
+            assert_eq!(mpi_sys::MPI_Init(ptr::null_mut(), ptr::null_mut()), 0);
+            mpi_sys::RSMPI_COMM_WORLD
+        }
+        #[cfg(not(feature = "mpi"))]
+        0
+    }
+
+    unsafe fn finalize_world() {
+        #[cfg(feature = "mpi")]
+        unsafe {
+            mpi_sys::MPI_Finalize();
+        }
+    }
+
     /// 1D Poisson (tridiag -1, 2, -1) with exact solution x = 1, solved with BoomerAMG.
     #[test]
     fn boomeramg_solves_1d_poisson() {
         const N: HYPRE_BigInt = 100;
-        let comm: MPI_Comm = 0; // sequential build: stands for MPI_COMM_WORLD
 
         unsafe {
+            let comm = world();
             assert_eq!(HYPRE_Initialize(), 0);
 
             // Matrix
@@ -96,6 +114,7 @@ mod tests {
             HYPRE_IJVectorDestroy(b);
             HYPRE_IJVectorDestroy(x);
             HYPRE_Finalize();
+            finalize_world();
         }
     }
 }

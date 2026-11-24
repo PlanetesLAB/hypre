@@ -16,9 +16,16 @@ exclude = [
     "vendor/hypre/src/test",
 ]
 
+[lib]
+doctest = false
+
+[features]
+mpi = ["dep:mpi-sys", "dep:build-probe-mpi"]
+
+[dependencies]
+mpi-sys = { version = "0.2.4", optional = true }
+
 [build-dependencies]
 bindgen = "0.73.2"
 cmake = "0.1.58"
-
-[lib]
-doctest = false
+build-probe-mpi = { version = "0.1.5", optional = true }
