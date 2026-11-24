@@ -1,0 +1,3 @@
+[submodule "hypre-sys/vendor/hypre"]
+	path = hypre-sys/vendor/hypre
+	url = https://github.com/hypre-space/hypre.git
