@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev cmake libopenmpi-dev openmpi-bin
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install open-mpi libomp
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Test (openmp)
+        run: cargo test --workspace --features hypre-sys/openmp
+
+      - name: Test (mpi)
+        run: cargo test --workspace --features hypre-sys/mpi
+
+      - name: Test (mpi, openmp)
+        run: cargo test --workspace --features hypre-sys/mpi,hypre-sys/openmp
